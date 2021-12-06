@@ -24,11 +24,11 @@ android {
                 jacoco.excludes = ['jdk.internal.*']
             }
         }
-        execution 'ANDROID_TEST_ORCHESTRATOR'
-        animationsDisabled true
-        unitTests {
-            includeAndroidResources = true
-        }
+//        execution 'ANDROID_TEST_ORCHESTRATOR'
+//        animationsDisabled true
+//        unitTests {
+//            includeAndroidResources = true
+//        }
     }
     buildTypes {
         release {
@@ -75,6 +75,13 @@ task jacocoTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']  ) {
     description = "Generate Jacoco coverage reports after running tests."
 
 
+    //配置生成报告
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+
+
     //****** 根据项目需要修改 ******
     //定义需要检测覆盖率的目录======需要修改为你的module，并指定到源码======
     def coverageSourceDirs = [
@@ -105,16 +112,11 @@ task jacocoTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']  ) {
     //定义检测覆盖率的class所在目录(以项目class所在目录为准)；gradle3.2 class所在目录 dir: './build/intermediates/javac/debug/compileDebugJavaWithJavac/classes',
 //    def javaClasses =
     // 下面dir需要指定到，编译生成的*.class文件
-    classDirectories.from = fileTree(dir: './build/intermediates/app_classes/debug', excludes: unitTestCoverageExclusions)
+    classDirectories.from = fileTree(dir: '../app/build/intermediates/app_classes/debug/com/example/demo', excludes: unitTestCoverageExclusions)
 
 
     //存储APP运行时产生exec报告的路径
     executionData.from = files("$buildDir/jacoco/testDebugUnitTest.exec")
-    //配置生成报告
-    reports {
-        xml.enabled = true
-        html.enabled = true
-    }
 }
 
 
