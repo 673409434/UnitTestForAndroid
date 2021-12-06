@@ -1,0 +1,122 @@
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'kotlin-android-extensions'
+
+}
+
+android {
+    compileSdk 31
+
+    defaultConfig {
+        applicationId "com.example.demo"
+        minSdk 21
+        targetSdk 30
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    testOptions {
+        unitTests.all {
+            jacoco {
+                includeNoLocationClasses = true
+                jacoco.excludes = ['jdk.internal.*']
+            }
+        }
+        execution 'ANDROID_TEST_ORCHESTRATOR'
+        animationsDisabled true
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            //如果要在本地生成单元测试覆盖率报告，本参数更改为true ,正常开发则更改为false
+            testCoverageEnabled true
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+
+    implementation 'androidx.core:core-ktx:1.7.0'
+    implementation 'androidx.appcompat:appcompat:1.3.1'
+    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.1'
+
+    testImplementation 'junit:junit:4.+'
+    testImplementation 'androidx.test:core:1.0.0'
+    testImplementation 'org.robolectric:robolectric:4.6.1'
+
+    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+    androidTestImplementation 'androidx.test.ext:junit-ktx:1.1.3'
+
+}
+
+apply plugin: 'jacoco'
+jacoco {
+    toolVersion = "0.8.6"   //版本号可用最新
+}
+
+task jacocoTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']  ) {
+    //设置gradle命令分组
+    group = "Reporting"
+    //命令描述
+    description = "Generate Jacoco coverage reports after running tests."
+
+
+    //****** 根据项目需要修改 ******
+    //定义需要检测覆盖率的目录======需要修改为你的module，并指定到源码======
+    def coverageSourceDirs = [
+            '../app/src'
+    ]
+    //设置需要检测覆盖率的目录
+    sourceDirectories.from = files(coverageSourceDirs)
+//    //额外挂载依赖Moudle
+//    additionalSourceDirs.from = files(coverageSourceDirs)
+
+
+    //****** 根据项目需要修改 ******
+    //定义不需要检测的文件列表
+    def unitTestCoverageExclusions = [
+            '**/R.class',
+            '**/R$*.class',
+            '**/*$ViewInjector*.*',
+            '**/*$ViewBinder*.*',
+            '**/BuildConfig.*',
+            '**/Manifest*.*'
+//            '**/*Activity.*',
+//            '**/*Fragment.*',
+//            '**/*Adapter.*',
+//            '**/*Dialog.*',
+//            '**/*View.*',
+//            '**/*Application.*'
+    ]
+    //定义检测覆盖率的class所在目录(以项目class所在目录为准)；gradle3.2 class所在目录 dir: './build/intermediates/javac/debug/compileDebugJavaWithJavac/classes',
+//    def javaClasses =
+    // 下面dir需要指定到，编译生成的*.class文件
+    classDirectories.from = fileTree(dir: './build/intermediates/app_classes/debug', excludes: unitTestCoverageExclusions)
+
+
+    //存储APP运行时产生exec报告的路径
+    executionData.from = files("$buildDir/jacoco/testDebugUnitTest.exec")
+    //配置生成报告
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+}
+
+
+
+
