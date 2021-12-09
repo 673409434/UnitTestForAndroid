@@ -8,3 +8,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "UnitTestForAndroid"
 include ':app'
+include ':LibTest'
