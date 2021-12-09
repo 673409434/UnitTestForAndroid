@@ -228,6 +228,29 @@ JVM中通过-javaagent参数指定特定的jar文件启动Instrumentation的代�
 在测试前先对文件进行插桩，然后生成插过桩的class或jar包，测试插过桩 的class和jar包后，会生成动态覆盖信息到文件，最后统一对覆盖信息进行处理，并生成报告。
 
 ## 四、基础配置
+
+### 方案一：AndroidTest 单元测试
+1、工程APP的build.gradle配置如下：
+```
+android {
+    defaultConfig {
+        。。。
+        //默认真机测试的配置
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+     
+    buildTypes {
+        debug {
+            //如果要在本地生成单元测试覆盖率报告，本参数更改为true ,正常开发则更改为false
+            testCoverageEnabled true
+        }
+    }
+}
+```
+2、添加以上配置后，同步一下gradle，就会生成"createDebugCovergeReport"的task(在gradle的verification分组下面)；
+执行该命令即可进行AndroidTest目录下的测试（依赖真机）
+
+### 方案二：UnitTest 本地单元测试——统计各个模块的覆盖率
 1、根目录build.gradle中添加jacoco插架依赖；
 ```
 dependencies {
@@ -323,7 +346,7 @@ jacoco.excludes = ['jdk.internal.*']
 执行各个模块中的jacocoTestReport命令，生成本地单元测试报告 和 对应模块的覆盖率报告；
 因为jacocoTestReport命令依赖“testDebugUnitTest”，所以会先执行单侧，在build/reports/tests/testDebugUnitTest/目录下面生成测试报告，同时build/reports/jacoco/jacocoTestReports/目录下面生成覆盖率报告；
 
-方案三：UnitTest 本地单元测试——统计APP覆盖率
+### 方案三：UnitTest 本地单元测试——统计APP覆盖率
 1、根目录build.gradle中添加jacoco插架依赖；
 ```
 dependencies {
