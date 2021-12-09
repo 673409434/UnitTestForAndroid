@@ -14,4 +14,11 @@ class ExampleUnitTest {
     fun addition_isCorrect() {
         assertEquals(4, 2 + 2)
     }
+
+    @Test
+    fun function_isCorrect() {
+//        assertEquals(4, 2 + 2)
+        assertEquals(SecondXXUtil.getTestStr(), "test")
+
+    }
 }

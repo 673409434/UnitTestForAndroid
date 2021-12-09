@@ -1,0 +1,59 @@
+
+apply plugin: 'jacoco'
+jacoco {
+    toolVersion = "0.8.6"   //版本号可用最新
+}
+
+//定义jacoco命令，命令依赖单侧"testDebugUnitTest"
+task jacocoTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']  ) {
+    //step1：定义命令分组等信息
+    //设置gradle命令分组
+    group = "Reporting"
+    //命令描述
+    description = "Generate Jacoco coverage reports after running tests."
+
+
+    //定义不需要检测的文件列表
+    def unitTestCoverageExclusions = [
+            '**/R.class',
+            '**/R$*.class',
+            '**/*$ViewInjector*.*',
+            '**/*$ViewBinder*.*',
+            '**/BuildConfig.*',
+            '**/Manifest*.*',
+            '**/*Activity.*',
+            '**/*Fragment.*',
+            '**/*Adapter.*',
+            '**/*Dialog.*',
+            '**/*View.*',
+            '**/*Application.*'
+    ]
+    // 下面dir需要指定到，编译生成的*.class文件
+    project.rootProject.allprojects.forEach {
+        println("======cur project is ${it.name},   buildDir is $it.buildDir" )
+
+        if (it.name.contains("LibTest" ) ) {
+            println("======test projects is  ${it.name},   buildDir is $it.buildDir" )
+            //step2：定义需要检测覆盖率的目录======根据项目需要修改，需要修改为你的module，并指定到源码======
+            sourceDirectories.from.add(files("${project.rootDir}" + "${it.name}" + "/src/main/java"))
+
+            //step3：定义检测覆盖率的class所在目录(以项目class所在目录为准)；***** 根据项目需要修改 ******
+            //kotlinClasses
+            classDirectories.from.add(fileTree(dir:"${it.buildDir}" + "/tmp/kotlin-classes/debug", excludes: unitTestCoverageExclusions))
+            //javaClasses
+            classDirectories.from.add(fileTree(dir:"${it.buildDir}" + "/intermediates/javac/debug/classes", excludes: unitTestCoverageExclusions))
+
+        }
+    }
+
+    //step4：APP运行时产生exec报告的路径，报告需要从这里文件解析生成
+    executionData.from = fileTree(dir: "$buildDir", includes: ['**/*.exec', '**/*.ec'])
+
+
+    //step5：配置生成报告
+    reports {
+        csv.enabled = false
+        xml.enabled = false
+        html.enabled = true
+    }
+}

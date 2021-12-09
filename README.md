@@ -228,73 +228,41 @@ JVM中通过-javaagent参数指定特定的jar文件启动Instrumentation的代�
 在测试前先对文件进行插桩，然后生成插过桩的class或jar包，测试插过桩 的class和jar包后，会生成动态覆盖信息到文件，最后统一对覆盖信息进行处理，并生成报告。
 
 ## 四、基础配置
-1、工程APP的build.gradle配置如下：
+1、根目录build.gradle中添加jacoco插架依赖；
 ```
 dependencies {
-    ...
-    classpath "org.jacoco:org.jacoco.core:0.8.6"
+...
+classpath "org.jacoco:org.jacoco.core:0.8.6"
 }
 ```
-2、application目录的build.gradle文件修改如下：
+2、编写jacoco.gralde脚本。
 ```
-android {
-    defaultConfig {
-        。。。
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-    }
-    。。。
-    testOptions {
-        unitTests.all {
-            jacoco {
-                includeNoLocationClasses = true
-                jacoco.excludes = ['jdk.internal.*']
-            }
-        }
-//        execution 'ANDROID_TEST_ORCHESTRATOR'
-//        animationsDisabled true
-//        unitTests {
-//            includeAndroidResources = true
-//        }
-    }
-    。。。
-    buildTypes {
-        debug {
-            //如果要在本地生成单元测试覆盖率报告，本参数更改为true ,正常开发则更改为false
-            testCoverageEnabled true
-        }
-    }
-}
+如下：
 apply plugin: 'jacoco'
 jacoco {
-    toolVersion = "0.8.6"   //版本号可用最新
+toolVersion = "0.8.6"   //版本号可用最新
 }
- 
+
+//定义jacoco命令，命令依赖单侧"testDebugUnitTest"
 task jacocoTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']  ) {
-    //设置gradle命令分组
-    group = "Reporting"
-    //命令描述
-    description = "Generate Jacoco coverage reports after running tests."
- 
- 
-    //配置生成报告
-    reports {
-        xml.enabled = true
-        html.enabled = true
-    }
- 
- 
-    //****** 根据项目需要修改 ******
-    //定义需要检测覆盖率的目录======需要修改为你的module，并指定到源码======
+//step1：定义命令分组等信息
+//设置gradle命令分组
+group = "Reporting"
+//命令描述
+description = "Generate Jacoco coverage reports after running tests."
+
+
+    //step2：定义需要检测覆盖率的目录======根据项目需要修改，需要修改为你的module，并指定到源码======
     def coverageSourceDirs = [
-            '../app/src'
+            "${projectDir}/src/main/java"
     ]
     //设置需要检测覆盖率的目录
     sourceDirectories.from = files(coverageSourceDirs)
-//    //额外挂载依赖Moudle
-//    additionalSourceDirs.from = files(coverageSourceDirs)
+    //额外挂载依赖Moudle
+    additionalSourceDirs.from = files(coverageSourceDirs)
  
  
-    //****** 根据项目需要修改 ******
+    //step3：定义检测覆盖率的class所在目录(以项目class所在目录为准)；***** 根据项目需要修改 ******
     //定义不需要检测的文件列表
     def unitTestCoverageExclusions = [
             '**/R.class',
@@ -302,33 +270,140 @@ task jacocoTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']  ) {
             '**/*$ViewInjector*.*',
             '**/*$ViewBinder*.*',
             '**/BuildConfig.*',
-            '**/Manifest*.*'
-//            '**/*Activity.*',
-//            '**/*Fragment.*',
-//            '**/*Adapter.*',
-//            '**/*Dialog.*',
-//            '**/*View.*',
-//            '**/*Application.*'
+            '**/Manifest*.*',
+            '**/*Activity.*',
+            '**/*Fragment.*',
+            '**/*Adapter.*',
+            '**/*Dialog.*',
+            '**/*View.*',
+            '**/*Application.*'
     ]
-    //定义检测覆盖率的class所在目录(以项目class所在目录为准)；gradle3.2 class所在目录 dir: './build/intermediates/javac/debug/compileDebugJavaWithJavac/classes',
     // 下面dir需要指定到，编译生成的*.class文件
-    classDirectories.from = fileTree(dir: '../app/build/intermediates/app_classes/debug/com/example/demo', excludes: unitTestCoverageExclusions)
+    def javaClasses = fileTree(dir: "$buildDir/intermediates/javac/debug/classes", excludes: unitTestCoverageExclusions)
+    def kotlinClasses = fileTree(dir: "$buildDir/tmp/kotlin-classes/debug", excludes: unitTestCoverageExclusions)
+    classDirectories.from = files([javaClasses, kotlinClasses])
  
  
-    //存储APP运行时产生exec报告的路径
-    executionData.from = files("$buildDir/jacoco/testDebugUnitTest.exec")
+    //step4：APP运行时产生exec报告的路径，报告需要从这里文件解析生成
+    executionData.from = fileTree(dir: "$buildDir", includes: ['**/*.exec', '**/*.ec'])
+ 
+ 
+    //step5：配置生成报告
+    reports {
+        csv.enabled = false
+        xml.enabled = false
+        html.enabled = true
+    }
 }
 ```
-3、命令运行
-createDebugUnitTestCoverageReport：生成本地单元测试UnitTest测试覆盖率报告
-createDebugAndroidTestCoverageReport：生成Android Instrumentation测试覆盖率报告
-jacocoTestReport:执行单元测试，生成测试报告；
-其他命令略；
+3、要进行单元测试的lib module的build.gradle中添加
+```
+apply from: "../jacoco.gradle"
+```
+4、build.gradle文件如下配置可选（根据使用可选）：
+```
+android {
+testOptions {
+unitTests.all {
+jacoco {
+includeNoLocationClasses = true
+jacoco.excludes = ['jdk.internal.*']
+}
+}
+//        execution 'ANDROID_TEST_ORCHESTRATOR'
+//        animationsDisabled true
+//        unitTests {
+//            includeAndroidResources = true
+//        }
+}
+}
+因为依赖“testDebugUnitTest”，所以会先执行单侧，在build/reports/tests/testDebugUnitTest/目录下面生成测试报告，同时build/reports/jacoco/jacocoTestReports/目录下面生成覆盖率报告；
+```
+5、命令运行
+执行各个模块中的jacocoTestReport命令，生成本地单元测试报告 和 对应模块的覆盖率报告；
+因为jacocoTestReport命令依赖“testDebugUnitTest”，所以会先执行单侧，在build/reports/tests/testDebugUnitTest/目录下面生成测试报告，同时build/reports/jacoco/jacocoTestReports/目录下面生成覆盖率报告；
 
-4、报告示例：
-1）报告位置：
+方案三：UnitTest 本地单元测试——统计APP覆盖率
+1、根目录build.gradle中添加jacoco插架依赖；
+```
+dependencies {
+...
+classpath "org.jacoco:org.jacoco.core:0.8.6"
+}
+```
+2、编写jacoco.gralde脚本。
+```
+apply plugin: 'jacoco'
 
-2）报告示例：
+jacoco {
+toolVersion = "0.8.6"   //版本号可用最新
+}
+
+//定义jacoco命令，命令依赖单侧"testDebugUnitTest"
+task jacocoTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']  ) {
+//step1：定义命令分组等信息
+//设置gradle命令分组
+group = "Reporting"
+//命令描述
+description = "Generate Jacoco coverage reports after running tests."
+
+
+    //定义不需要检测的文件列表
+    def unitTestCoverageExclusions = [
+            '**/R.class',
+            '**/R$*.class',
+            '**/*$ViewInjector*.*',
+            '**/*$ViewBinder*.*',
+            '**/BuildConfig.*',
+            '**/Manifest*.*',
+            '**/*Activity.*',
+            '**/*Fragment.*',
+            '**/*Adapter.*',
+            '**/*Dialog.*',
+            '**/*View.*',
+            '**/*Application.*'
+    ]
+    // 下面dir需要指定到，编译生成的*.class文件
+    project.rootProject.allprojects.forEach {
+        println("======cur project is ${it.name},   buildDir is $it.buildDir" )
+ 
+        if (it.name.contains("LibTest" ) ) {
+            println("======test projects is  ${it.name},   buildDir is $it.buildDir" )
+            //step2：定义需要检测覆盖率的目录======根据项目需要修改，需要修改为你的module，并指定到源码======
+            sourceDirectories.from.add(files("${projectDir}" + "/src/main/java"))
+ 
+            //step3：定义检测覆盖率的class所在目录(以项目class所在目录为准)；***** 根据项目需要修改 ******
+            //kotlinClasses
+            classDirectories.from.add(fileTree(dir:"${it.buildDir}" + "/tmp/kotlin-classes/debug", excludes: unitTestCoverageExclusions))
+            //javaClasses
+            classDirectories.from.add(fileTree(dir:"${it.buildDir}" + "/intermediates/javac/debug/classes", excludes: unitTestCoverageExclusions))
+ 
+        }
+    }
+ 
+    //step4：APP运行时产生exec报告的路径，报告需要从这里文件解析生成
+    executionData.from = fileTree(dir: "$buildDir", includes: ['**/*.exec', '**/*.ec'])
+ 
+ 
+    //step5：配置生成报告
+    reports {
+        csv.enabled = false
+        xml.enabled = false
+        html.enabled = true
+    }
+}
+```
+3、App module的build.gradle中添加
+```
+apply from: "../jacoco.gradle"
+```
+4、更改脚本中的if (it.name.contains("LibTest" ) )代码，以指定对应要单侧的moudle。执行jacocoTestReport命令，生成本地单元测试报告 和 对应模块的覆盖率报告；
+5、统计整个APP的单侧覆盖率。
+1）修改上述if (it.name.contains("LibTest" ) )代码，已经添加所有的module。
+2）在工程根目录运行命令
+./gradlew createDebugCoverageReport
+3）再执行./gradlew jacocoTestReport，就会在build/reports/allReports目录下生成所有工程的单元测试覆盖率报告。
+
 
 ## 五、覆盖率
 Jacoco从多种角度对代码进行了分析，包括指令（Instructions，C0 Coverage），分支（Branches，C1 Coverage），圈复杂度（Cyclomatic Complexity），行（Lines），方法（Methods），类（Classes）。
